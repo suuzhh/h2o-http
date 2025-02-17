@@ -16,22 +16,28 @@ describe("createHttpClient", () => {
   });
 
   test("createHttpClient.get with query", async () => {
-    let url = '';
+    let url = "";
     const cancel = httpClient.lifecycle.beforeRequest((req) => {
       url = req.url;
       return req;
-    })
-    const res = await httpClient.get("https://jsonplaceholder.typicode.com/todos/1", {
-      query: {
-        a: 1,
-      },
     });
+    const res = await httpClient.get(
+      "https://jsonplaceholder.typicode.com/todos/1",
+      {
+        query: {
+          a: 1,
+        },
+      }
+    );
     expect(res.data).not.toBeUndefined();
     expect(url).toBe("https://jsonplaceholder.typicode.com/todos/1?a=1");
 
-    const res2 = await httpClient.get("https://jsonplaceholder.typicode.com/todos/1", {
-      query: 'a=2',
-    });
+    const res2 = await httpClient.get(
+      "https://jsonplaceholder.typicode.com/todos/1",
+      {
+        query: "a=2",
+      }
+    );
 
     expect(res2.data).not.toBeUndefined();
     expect(url).toBe("https://jsonplaceholder.typicode.com/todos/1?a=2");
@@ -91,11 +97,11 @@ describe("createDownloader", () => {
     const downloader = createDownloader();
 
     const { data: file } = await downloader.download(
-      "https://picsum.photos/1200/800"
+      "https://cdn.fastcdnshop.com/assets/2021/10/4a6fa5385c439adfdd0d937066256f6d-50.jpg"
     );
 
     expect(file).not.toBeUndefined();
     expect(file instanceof File).toBeTruthy();
-    expect(file!.name).toBe("800");
+    expect(file!.name).toBe("4a6fa5385c439adfdd0d937066256f6d-50.jpg");
   });
 });

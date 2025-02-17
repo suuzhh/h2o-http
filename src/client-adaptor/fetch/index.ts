@@ -1,8 +1,8 @@
 import type { IHTTPRequestConfig } from "@/client-adaptor/request";
 import type { IHttpClientAdaptor } from "@/client-adaptor/base";
-import { buildFailResult, buildSuccessResult } from '@/utils';
-import type { IResponseParser } from '@/parser';
-import type { LifecycleCaller } from '@/lifecycle';
+import { buildFailResult, buildSuccessResult } from "@/utils";
+import type { IResponseParser } from "@/parser";
+import type { LifecycleCaller } from "@/lifecycle";
 import { timeout as timeoutWrapper } from "./timeout";
 
 function createRequestInit(config: IHTTPRequestConfig) {
@@ -35,10 +35,17 @@ function createRequestInit(config: IHTTPRequestConfig) {
 
 // client-adaptor/fetch 实现
 export const fetchAdaptor: IHttpClientAdaptor = {
-  fetch: async <R>(requestConfig: IHTTPRequestConfig, responseParser: IResponseParser, lifecycle: LifecycleCaller) => {
+  fetch: async <R>(
+    requestConfig: IHTTPRequestConfig,
+    responseParser: IResponseParser,
+    lifecycle: LifecycleCaller
+  ) => {
     let res: Response;
 
-    const beforeRequestResult = await lifecycle.call("beforeRequest", requestConfig);
+    const beforeRequestResult = await lifecycle.call(
+      "beforeRequest",
+      requestConfig
+    );
 
     if (beforeRequestResult.error) {
       return buildFailResult(beforeRequestResult.error);
@@ -49,16 +56,28 @@ export const fetchAdaptor: IHttpClientAdaptor = {
     }
 
     const { validateStatus, timeout } = requestConfig;
-
     const requestInit = createRequestInit(requestConfig);
-
     try {
       // 包裹一层 用于 验证是否超时
       res = await timeoutWrapper(timeout * 1000, fetch(requestInit));
     } catch (err) {
-      return buildFailResult(
-        err instanceof Error ? err : new Error("request error")
-      );
+      const isAbort = err instanceof DOMException && err.name === "AbortError";
+      const isTimeout = err instanceof Error && err?.name === "TimeoutError";
+
+      if (isAbort) {
+        // porcess abort error
+        return buildFailResult(err);
+      } else if (isTimeout) {
+        // process timeout error
+        return buildFailResult(err);
+      } else {
+        // porcess cors | network block or no network error
+
+        // this error should call `onResponseStatusError` lifecycle
+        lifecycle.emit("onResponseError", requestConfig);
+        let error = err instanceof Error ? err : new Error("request error");
+        return buildFailResult(error);
+      }
     }
 
     // 通过状态码判断成功与否
@@ -86,6 +105,7 @@ export const fetchAdaptor: IHttpClientAdaptor = {
       //   );
       // }
     } else {
+      lifecycle.emit("onResponseError", requestConfig, res);
       // 处理状态码错误
       const onResponseStatusErrorResult = await lifecycle.call(
         "onResponseStatusError",
@@ -115,8 +135,8 @@ export const fetchAdaptor: IHttpClientAdaptor = {
         );
       }
     }
-  }
-}
+  },
+};
 
 async function parseResponse<R>(
   res: Response,

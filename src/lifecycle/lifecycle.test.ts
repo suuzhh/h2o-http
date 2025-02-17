@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vitest } from "vitest";
 import { LifecycleCaller } from "@/lifecycle";
-import { normalizeRequestConfig } from '@/client-adaptor/request';
+import { normalizeRequestConfig } from "@/client-adaptor/request";
 
 describe("Lifecycle", () => {
   const lifecycle = new LifecycleCaller();
@@ -15,7 +15,6 @@ describe("Lifecycle", () => {
       normalizeRequestConfig({
         url: "https://jsonplaceholder.typicode.com/todos/1",
       })
-
     );
     const result = res.result;
 
@@ -31,7 +30,7 @@ describe("Lifecycle", () => {
 
     const res = await lifecycle.call(
       "onResponseStatusError",
-      normalizeRequestConfig({ url: 'test' }),
+      normalizeRequestConfig({ url: "test" }),
       new Response("123")
     );
     const { result } = res;
@@ -41,8 +40,8 @@ describe("Lifecycle", () => {
     expect(result!.message).toBe("123");
   });
 
-  test('onResponseStatusError callback first parameter should be request config', async () => {
-    let url = '';
+  test("onResponseStatusError callback first parameter should be request config", async () => {
+    let url = "";
 
     lifecycle.onResponseStatusError((req) => {
       url = req.url;
@@ -50,14 +49,14 @@ describe("Lifecycle", () => {
 
     const res = await lifecycle.call(
       "onResponseStatusError",
-      normalizeRequestConfig({ url: 'test' }),
+      normalizeRequestConfig({ url: "test" }),
       new Response("123")
     );
     const { error } = res;
 
     // 该回调的result也是一个错误对象
     expect(error).not.toBeUndefined();
-    expect(url).toBe('test');
+    expect(url).toBe("test");
   });
 
   test("onResponseStatusError should catch error", async () => {
@@ -67,7 +66,7 @@ describe("Lifecycle", () => {
 
     const res = await lifecycle.call(
       "onResponseStatusError",
-      normalizeRequestConfig({ url: 'test' }),
+      normalizeRequestConfig({ url: "test" }),
       new Response("123")
     );
     const { error } = res;
@@ -75,5 +74,38 @@ describe("Lifecycle", () => {
     // 该回调的result也是一个错误对象
     expect(error).not.toBeUndefined();
     expect(error!.message).toBe("456");
+  });
+
+  test("onResponseError callback should be called", async () => {
+    // mock callback
+    const fn = vitest.fn();
+    lifecycle.onResponseError(fn);
+
+    await lifecycle.call(
+      "onResponseError",
+      normalizeRequestConfig({ url: "test" })
+    );
+
+    // 该回调的result也是一个错误对象
+    expect(fn).toBeCalledTimes(1);
+  });
+
+  test("addEventListener should be called", async () => {
+    const fn = vitest.fn();
+    lifecycle.addEventListener("onResponseError", fn);
+
+    await new Promise((resolve) => {
+      lifecycle.emit(
+        "onResponseError",
+        normalizeRequestConfig({ url: "test" })
+      );
+
+      // next tick
+      setTimeout(() => {
+        resolve(null);
+      }, 0);
+    });
+
+    expect(fn).toBeCalledTimes(1);
   });
 });
