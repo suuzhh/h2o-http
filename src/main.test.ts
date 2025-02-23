@@ -1,8 +1,9 @@
-import { createDownloader, createHttpClient } from "./main";
+import { ResultError } from "./backend/internal-error";
+import { createFetchHttpClient } from "./main";
 import { describe, expect, test } from "vitest";
 
 describe("createHttpClient", () => {
-  const httpClient = createHttpClient();
+  const httpClient = createFetchHttpClient();
   test("createHttpClient is defined", () => {
     expect(httpClient).not.toBeUndefined();
   });
@@ -15,42 +16,11 @@ describe("createHttpClient", () => {
     expect(res.data).not.toBeUndefined();
   });
 
-  test("createHttpClient.get with query", async () => {
-    let url = '';
-    const cancel = httpClient.lifecycle.beforeRequest((req) => {
-      url = req.url;
-      return req;
-    })
-    const res = await httpClient.get("https://jsonplaceholder.typicode.com/todos/1", {
-      query: {
-        a: 1,
-      },
-    });
-    expect(res.data).not.toBeUndefined();
-    expect(url).toBe("https://jsonplaceholder.typicode.com/todos/1?a=1");
-
-    const res2 = await httpClient.get("https://jsonplaceholder.typicode.com/todos/1", {
-      query: 'a=2',
-    });
-
-    expect(res2.data).not.toBeUndefined();
-    expect(url).toBe("https://jsonplaceholder.typicode.com/todos/1?a=2");
-    cancel();
-  });
-
   test("createHttpClient.post is defined", async () => {
     const res = await httpClient.post(
       "https://jsonplaceholder.typicode.com/todos/1"
     );
     expect(res.data).toBeUndefined();
-  });
-
-  test("createHttpClient.lifecycle.onResponseStatusError is be called", async () => {
-    httpClient.lifecycle.onResponseStatusError(() => {
-      throw new Error("_afterResponseStatusError error");
-    });
-    const res = await httpClient.post("https://mock.httpstatus.io/400");
-    expect(res.error?.message).toBe("_afterResponseStatusError error");
   });
 
   test("timeout options set 4s", async () => {
@@ -75,27 +45,13 @@ describe("createHttpClient", () => {
           const endTime = performance.now() - startTime;
 
           const error = res.error;
+          console.log(error);
           // 测试是否包含中断错误
-          expect(error instanceof DOMException).toBeTruthy();
-          expect((error as DOMException).code).toBe(DOMException.ABORT_ERR);
+          expect((error as ResultError).type).toBe("AbortError");
           expect(endTime <= 4500).toBeTruthy();
           done();
         });
 
       controller.abort();
     }));
-});
-
-describe("createDownloader", () => {
-  test("download a jpg file", async () => {
-    const downloader = createDownloader();
-
-    const { data: file } = await downloader.download(
-      "https://picsum.photos/1200/800"
-    );
-
-    expect(file).not.toBeUndefined();
-    expect(file instanceof File).toBeTruthy();
-    expect(file!.name).toBe("800");
-  });
 });

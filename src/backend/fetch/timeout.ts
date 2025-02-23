@@ -7,7 +7,10 @@ export function timeout(milliseconds: number, promise: Promise<Response>) {
 
   return new Promise<Response>(function (resolve, reject) {
     const timer = setTimeout(() => {
-      reject(new Error("request timeout"));
+      const timeoutError = new Error("request timeout");
+      // 设置一个内部错误类型标识
+      timeoutError.name = "TimeoutError";
+      reject(timeoutError);
     }, milliseconds);
 
     promise

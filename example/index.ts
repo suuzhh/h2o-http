@@ -1,15 +1,28 @@
-import { createDownloader, createHttpClient } from "../src/main";
+import { createFetchHttpClient, type HttpInterceptorFn } from "../src/main";
 
-const downloader = createDownloader();
-const httpClient = createHttpClient();
+const handleError: HttpInterceptorFn = async (req, next) => {
+  const result = await next(req);
+  if (result.error) {
+    console.log(req, result);
+  }
 
-downloader
-  .download(
-    "https://st4.depositphotos.com/1757635/22304/i/1600/depositphotos_223045340-stock-photo-woman-red-umbrella-waiting-train.jpg"
-  )
-  .then((data) => {
-    console.log(data);
-  });
+  const parsedResult = await result.response.json();
+  console.log("success", parsedResult);
+  return result;
+};
+
+// const downloader = createDownloader();
+const httpClient = createFetchHttpClient({
+  interceptors: [handleError],
+});
+
+// downloader
+//   .download(
+//     "https://st4.depositphotos.com/1757635/22304/i/1600/depositphotos_223045340-stock-photo-woman-red-umbrella-waiting-train.jpg"
+//   )
+//   .then((data) => {
+//     console.log(data);
+//   });
 
 // eslint-disable-next-line no-unused-vars
 window.addEventListener("unhandledrejection", (event) => {
@@ -18,17 +31,22 @@ window.addEventListener("unhandledrejection", (event) => {
 
 async function testAbort() {
   const controller = new AbortController();
-  const startTime = performance.now();
-  httpClient
-    .get("http://www.google.com:82/", {
+  const result = await httpClient.get(
+    "https://61e80b15e32cd90017acbfb7.mockapi.io/enterprise/news",
+    {
       signal: controller.signal,
-    })
-    .then((res) => {
-      console.log(res);
-    });
-  const endTime = performance.now() - startTime;
-  controller.abort();
-  console.log(endTime);
+    }
+  );
+
+  // setTimeout(() => {
+  //   controller.abort("123");
+  //   console.log("abort");
+  // }, 10);
+  if (result.error) {
+    console.error(result.error);
+  }
+
+  console.log("call", result.data);
 }
 
 testAbort();
